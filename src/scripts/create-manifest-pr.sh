@@ -69,10 +69,53 @@ PY
 )
 
 auth_token="${PR_TOKEN:-$GITHUB_TOKEN}"
-response=$(curl -sS -H "Authorization: Bearer $auth_token" \
+create_response=$(curl -sS -H "Authorization: Bearer $auth_token" \
   -H "Accept: application/vnd.github.v3+json" \
   -H "Content-Type: application/json" \
   https://api.github.com/repos/$GITHUB_REPOSITORY/pulls \
   -d "$pr_payload")
 
-echo "$response"
+pr_number=$(python3 - <<'PY'
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    if 'number' in data:
+        print(data['number'])
+except Exception:
+    pass
+PY
+<<<"$create_response")
+
+if [[ -z "$pr_number" ]]; then
+  echo "PR creation response did not include a number, checking for an existing open PR..."
+  owner="${GITHUB_REPOSITORY%%/*}"
+  pr_number=$(curl -sS -H "Authorization: Bearer $auth_token" \
+    -H "Accept: application/vnd.github.v3+json" \
+    "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls?state=open&head=$owner:$branch_name" \
+    | python3 - <<'PY'
+import json, sys
+try:
+    items = json.load(sys.stdin)
+    if items:
+        print(items[0]['number'])
+except Exception:
+    pass
+PY
+)
+fi
+
+if [[ -z "$pr_number" ]]; then
+  echo "Failed to find or create a PR. Response was:"
+  echo "$create_response"
+  exit 1
+fi
+
+echo "Using PR #$pr_number"
+
+merge_response=$(curl -sS -X PUT -H "Authorization: Bearer $auth_token" \
+  -H "Accept: application/vnd.github.v3+json" \
+  -H "Content-Type: application/json" \
+  https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$pr_number/merge \
+  -d '{"merge_method":"merge"}')
+
+echo "Merge response: $merge_response"

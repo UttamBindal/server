@@ -1,0 +1,142 @@
+name: Build and Push Docker Image
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'src/server.go'
+      - 'src/go.mod'
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths:
+      - 'src/server.go'
+      - 'src/go.mod'
+
+jobs:
+  determine-version:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+    outputs:
+      next_version: ${{ steps.bump-version.outputs.next-version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags
+
+      - name: Determine release type
+        id: bump-version
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == 'pull_request' ]]; then
+            if [[ "${{ github.event.pull_request.base.ref }}" == 'main' ]] &&
+               [[ "${{ github.event.pull_request.head.ref }}" == 'test' ]]; then
+              release_type=minor
+            else
+              release_type=major
+            fi
+          elif [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
+            release_type=patch
+          else
+            release_type=major
+          fi
+
+          latest_tag=$(git tag --list 'v[0-9]*' --sort=-version:refname | head -n 1 || true)
+          if [[ -z "$latest_tag" ]]; then
+            latest_tag='v0.0.0'
+          fi
+
+          version=${latest_tag#v}
+          IFS='.' read -r major minor patch <<< "$version"
+
+          case "$release_type" in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+            *)
+              echo "Unknown release type: $release_type"
+              exit 1
+              ;;
+          esac
+
+          next_version="v${major}.${minor}.${patch}"
+          echo "release_type=$release_type"
+          echo "latest_tag=$latest_tag"
+          echo "next_version=$next_version"
+          echo "next-version=$next_version" >> "$GITHUB_OUTPUT"
+
+  build-and-push:
+    needs: determine-version
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Log in to Artifactory
+        uses: docker/login-action@v5
+        with:
+          registry: ${{ secrets.ARTIFACTORY_REGISTRY }}
+          username: ${{ secrets.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./src
+          file: ./src/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.ARTIFACTORY_REGISTRY }}/${{ secrets.ARTIFACTORY_REPO }}:${{ needs.determine-version.outputs.next_version }}
+
+      - name: Output pushed image tag
+        run: |
+          echo "Pushed image: ${{ secrets.ARTIFACTORY_REGISTRY }}/${{ secrets.ARTIFACTORY_REPO }}:${{ needs.determine-version.outputs.next_version }}"
+
+  create-manifest-pr:
+    needs: build-and-push
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Make script executable
+        run: chmod +x src/scripts/create-manifest-pr.sh src/scripts/update-manifest.sh
+
+      - name: Create manifest pull request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          ./src/scripts/create-manifest-pr.sh "${{ secrets.ARTIFACTORY_REGISTRY }}/${{ secrets.ARTIFACTORY_REPO }}:${{ needs.determine-version.outputs.next_version }}"

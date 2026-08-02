@@ -13,7 +13,7 @@ func (hh HelloHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	s := http.Server{
-		Addr:         ":80",
+		Addr:         ":8082",
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 90 * time.Second,
 		IdleTimeout:  120 * time.Second,

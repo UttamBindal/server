@@ -19,6 +19,8 @@ spec:
           image: trialmrmp8z.jfrog.io/dock/app:v1.0.0
           ports:
             - containerPort: 8082
+      imagePullSecrets:
+        - name: regcred
 ---
 apiVersion: v1
 kind: Service

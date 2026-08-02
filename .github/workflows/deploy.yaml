@@ -137,6 +137,7 @@ jobs:
       - name: Create manifest pull request
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TOKEN: ${{ secrets.PR_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           ./src/scripts/create-manifest-pr.sh "${{ secrets.ARTIFACTORY_REGISTRY }}/${{ secrets.ARTIFACTORY_REPO }}:${{ needs.determine-version.outputs.next_version }}"

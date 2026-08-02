@@ -8,10 +8,7 @@ fi
 
 image_tag="$1"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-if [[ -z "$repo_root" ]]; then
-  repo_root="$(cd "$script_dir/.." && pwd)"
-fi
+repo_root="$(cd "$script_dir/../.." && pwd)"
 manifest_file="$repo_root/src/manifests/app.yaml"
 
 if [[ -z "${GITHUB_REPOSITORY:-}" ]]; then

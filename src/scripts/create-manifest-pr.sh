@@ -53,7 +53,7 @@ git push -u origin "$branch_name" --force
 pr_title="Update ArgoCD manifest to ${image_tag}"
 pr_body="This pull request updates the ArgoCD manifest to use the newly published Docker image tag ${image_tag}."
 
-pr_payload=$(PYTHONUTF8=1 python3 - <<'PY'
+pr_payload=$(PYTHONUTF8=1 PR_TITLE="$pr_title" PR_BODY="$pr_body" PR_HEAD="$branch_name" python3 - <<'PY'
 import json, os
 print(json.dumps({
     'title': os.environ['PR_TITLE'],

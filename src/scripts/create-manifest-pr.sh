@@ -44,13 +44,25 @@ git checkout -B "$branch_name"
 
 "$repo_root/src/scripts/update-manifest.sh" "$image_tag"
 
-if git diff --quiet -- "$manifest_file"; then
-  echo "No manifest changes to commit."
+version_tag="${image_tag##*:}"
+version_no_v="${version_tag#v}"
+if [[ "$version_tag" == "$version_no_v" ]]; then
+  echo "Image tag does not include a leading v; updating VERSION to ${version_no_v}"
+fi
+if ! [[ "$version_no_v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Parsed version is invalid: $version_no_v"
+  exit 1
+fi
+
+echo "$version_no_v" > "$repo_root/VERSION"
+
+if git diff --quiet -- "$manifest_file" "$repo_root/VERSION"; then
+  echo "No manifest or version changes to commit."
   exit 0
 fi
 
-git add "$manifest_file"
-git commit -m "Update ArgoCD manifest for image ${image_tag}"
+git add "$manifest_file" "$repo_root/VERSION"
+git commit -m "Update ArgoCD manifest and VERSION for image ${image_tag}"
 
 git push -u origin "$branch_name" --force
 

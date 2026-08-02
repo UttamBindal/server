@@ -16,8 +16,8 @@ if [[ -z "${GITHUB_REPOSITORY:-}" ]]; then
   exit 1
 fi
 
-if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-  echo "GITHUB_TOKEN environment variable is required"
+if [[ -z "${GITHUB_TOKEN:-}" && -z "${PR_TOKEN:-}" ]]; then
+  echo "GITHUB_TOKEN or PR_TOKEN environment variable is required"
   exit 1
 fi
 
@@ -64,7 +64,8 @@ print(json.dumps({
 PY
 )
 
-response=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" \
+auth_token="${PR_TOKEN:-$GITHUB_TOKEN}"
+response=$(curl -sS -H "Authorization: Bearer $auth_token" \
   -H "Accept: application/vnd.github.v3+json" \
   -H "Content-Type: application/json" \
   https://api.github.com/repos/$GITHUB_REPOSITORY/pulls \

@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: webserver
-          image: REPLACE_WITH_IMAGE_TAG
+          image: trialmrmp8z.jfrog.io/dock/app:v1.0.0
           ports:
             - containerPort: 8082
 ---

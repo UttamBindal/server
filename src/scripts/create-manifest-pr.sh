@@ -90,9 +90,8 @@ create_response=$(curl -sS -H "Authorization: Bearer $auth_token" \
 pr_number=$(python3 - <<'PY'
 import json, sys
 try:
-    data = json.load(sys.stdin)
-    if 'number' in data:
-        print(data['number'])
+    data = json.loads(sys.stdin.read() or '{}')
+    print(data.get('number', ''))
 except Exception:
     pass
 PY
@@ -107,9 +106,9 @@ if [[ -z "$pr_number" ]]; then
     | python3 - <<'PY'
 import json, sys
 try:
-    items = json.load(sys.stdin)
-    if items:
-        print(items[0]['number'])
+    data = json.loads(sys.stdin.read() or '[]')
+    if data:
+        print(data[0].get('number', ''))
 except Exception:
     pass
 PY

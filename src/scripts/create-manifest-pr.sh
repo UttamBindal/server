@@ -7,8 +7,12 @@ if [[ $# -ne 1 ]]; then
 fi
 
 image_tag="$1"
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-manifest_file="$repo_root/manifests/app.yaml"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ -z "$repo_root" ]]; then
+  repo_root="$(cd "$script_dir/.." && pwd)"
+fi
+manifest_file="$repo_root/src/manifests/app.yaml"
 
 if [[ -z "${GITHUB_REPOSITORY:-}" ]]; then
   echo "GITHUB_REPOSITORY environment variable is required"

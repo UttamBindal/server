@@ -90,7 +90,12 @@ jobs:
     needs: determine-version
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set-image-tag.outputs.image-tag }}
     steps:
+      - name: Set image tag output
+        id: set-image-tag
+        run: echo "image-tag=${{ secrets.ARTIFACTORY_REGISTRY }}/${{ secrets.ARTIFACTORY_REPO }}:${{ needs.determine-version.outputs.next_version }}" >> "$GITHUB_OUTPUT"
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -139,5 +144,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_TOKEN: ${{ secrets.PR_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
-          ./src/scripts/create-manifest-pr.sh "${{ secrets.ARTIFACTORY_REGISTRY }}/${{ secrets.ARTIFACTORY_REPO }}:${{ needs.determine-version.outputs.next_version }}"
+          echo "IMAGE_TAG=$IMAGE_TAG"
+          if [[ -z "$IMAGE_TAG" || "$IMAGE_TAG" == *":" ]]; then
+            echo "IMAGE_TAG is invalid: '$IMAGE_TAG'"
+            exit 1
+          fi
+          ./src/scripts/create-manifest-pr.sh "$IMAGE_TAG"

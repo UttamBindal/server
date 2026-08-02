@@ -53,19 +53,20 @@ git push -u origin "$branch_name" --force
 pr_title="Update ArgoCD manifest to ${image_tag}"
 pr_body="This pull request updates the ArgoCD manifest to use the newly published Docker image tag ${image_tag}."
 
-pr_payload=$(python3 - <<'PY'
-import json, sys
+pr_payload=$(PYTHONUTF8=1 python3 - <<'PY'
+import json, os
 print(json.dumps({
-    'title': sys.argv[1],
-    'body': sys.argv[2],
-    'head': sys.argv[3],
+    'title': os.environ['PR_TITLE'],
+    'body': os.environ['PR_BODY'],
+    'head': os.environ['PR_HEAD'],
     'base': 'main'
 }))
 PY
-"$pr_title" "$pr_body" "$branch_name")
+)
 
 response=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
+  -H "Content-Type: application/json" \
   https://api.github.com/repos/$GITHUB_REPOSITORY/pulls \
   -d "$pr_payload")
 

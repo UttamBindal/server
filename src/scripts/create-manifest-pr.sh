@@ -27,6 +27,7 @@ if [[ ! -f "$manifest_file" ]]; then
 fi
 
 branch_name="manifest-update-$(echo "$image_tag" | tr '/:' '--' | tr '.' '-')"
+branch_name="$(echo "$branch_name" | sed -E 's/[^A-Za-z0-9._-]/-/g' | sed -E 's/^-+|[-.]+$//g')"
 
 cd "$repo_root"
 
@@ -37,7 +38,7 @@ git fetch --all --tags
 
 git checkout -B "$branch_name"
 
-"$repo_root/scripts/update-manifest.sh" "$image_tag"
+"$repo_root/src/scripts/update-manifest.sh" "$image_tag"
 
 if git diff --quiet -- "$manifest_file"; then
   echo "No manifest changes to commit."

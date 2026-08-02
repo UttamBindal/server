@@ -7,7 +7,9 @@ if [[ $# -ne 1 ]]; then
 fi
 
 image_tag="$1"
-manifest_file="src/manifests/app.yaml"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../.." && pwd)"
+manifest_file="$repo_root/src/manifests/app.yaml"
 
 if [[ ! -f "$manifest_file" ]]; then
   echo "Manifest file not found: $manifest_file"

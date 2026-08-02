@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: webserver
-          image: trialmrmp8z.jfrog.io/dock/app:v2.0.0
+          image: trialmrmp8z.jfrog.io/dock/app:v3.0.0
           ports:
             - containerPort: 8082
       imagePullSecrets:

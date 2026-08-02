@@ -100,19 +100,11 @@ PY
 if [[ -z "$pr_number" ]]; then
   echo "PR creation response did not include a number, checking for an existing open PR..."
   owner="${GITHUB_REPOSITORY%%/*}"
-  pr_number=$(curl -sS -H "Authorization: Bearer $auth_token" \
+  open_pr_response=$(curl -sS -H "Authorization: Bearer $auth_token" \
     -H "Accept: application/vnd.github.v3+json" \
-    "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls?state=open&head=$owner:$branch_name" \
-    | python3 - <<'PY'
-import json, sys
-try:
-    data = json.loads(sys.stdin.read() or '[]')
-    if data:
-        print(data[0].get('number', ''))
-except Exception:
-    pass
-PY
-)
+    "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls?state=open")
+  pr_number=$(printf '%s' "$open_pr_response" | jq -r --arg owner "$owner" --arg branch "$branch_name" \
+    '.[] | select(.head.repo.owner.login == $owner and .head.ref == $branch) | .number | tostring' | head -n 1)
 fi
 
 if [[ -z "$pr_number" ]]; then
